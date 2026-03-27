@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Galaga Game + High Scores</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+<style>
+body {
+  margin: 0;
+  background: black;
+  color: #00ffcc;
+  font-family: 'Press Start 2P', cursive;
+  text-align: center;
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  margin: 0 auto;
+  background: black;
+}
+
+#ui {
+  position: absolute;
+  top: 10px;
+  width: 100%;
+}
+
+input {
+  width: 60px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div id="ui">
+  SCORE: <span id="score">0</span> |
+  <input id="initials" maxlength="3" placeholder="AAA">
+  <button onclick="saveScore()">SAVE</button>
+</div>
+
+<canvas id="game" width="400" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let score = 0;
+
+// 🚀 Player
+const player = {
+  x: 180,
+  y: 550,
+  w: 40,
+  h: 20,
+  speed: 5
+};
+
+// 🔫 Bullets
+let bullets = [];
+
+// 👾 Enemies (formation)
+let enemies = [];
+for (let row = 0; row < 4; row++) {
+  for (let col = 0; col < 6; col++) {
+    enemies.push({
+      x: 50 + col * 50,
+      y: 50 + row * 40,
+      w: 30,
+      h: 20,
+      alive: true
+    });
+  }
+}
+
+let enemyDir = 1;
+
+// 🎮 Controls
+let keys = {};
+document.addEventListener('keydown', e => keys[e.key] = true);
+document.addEventListener('keyup', e => keys[e.key] = false);
+
+// 🔫 Shoot
+document.addEventListener('keydown', e => {
+  if (e.key === ' ') {
+    bullets.push({ x: player.x + 18, y: player.y });
+  }
+});
+
+function update() {
+  // Move player
+  if (keys['ArrowLeft']) player.x -= player.speed;
+  if (keys['ArrowRight']) player.x += player.speed;
+
+  // Move bullets
+  bullets.forEach(b => b.y -= 7);
+
+  // Move enemies (formation sway)
+  let hitEdge = false;
+  enemies.forEach(e => {
+    if (!e.alive) return;
+    e.x += enemyDir * 1;
+    if (e.x < 10 || e.x > 360) hitEdge = true;
+  });
+
+  if (hitEdge) {
+    enemyDir *= -1;
+    enemies.forEach(e => e.y += 10);
+  }
+
+  // Collision
+  bullets.forEach(b => {
+    enemies.forEach(e => {
+      if (e.alive &&
+          b.x < e.x + e.w &&
+          b.x > e.x &&
+          b.y < e.y + e.h &&
+          b.y > e.y) {
+        e.alive = false;
+        b.y = -100;
+        score += 100;
+      }
+    });
+  });
+
+  document.getElementById('score').textContent = score;
+}
+
+function draw() {
+  ctx.clearRect(0,0,400,600);
+
+  // Player
+  ctx.fillStyle = "#00ffcc";
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  // Bullets
+  ctx.fillStyle = "yellow";
+  bullets.forEach(b => ctx.fillRect(b.x, b.y, 3, 10));
+
+  // Enemies
+  ctx.fillStyle = "red";
+  enemies.forEach(e => {
+    if (e.alive)
+      ctx.fillRect(e.x, e.y, e.w, e.h);
+  });
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+
+// 💾 Save score
+function saveScore() {
+  const name = document.getElementById('initials').value.toUpperCase();
+  if (name.length !== 3) return alert("ENTER 3 LETTERS");
+
+  let scores = JSON.parse(localStorage.getItem('galagaScores')) || [];
+  scores.push({ name, score });
+  scores.sort((a,b)=>b.score-a.score);
+  scores = scores.slice(0,10);
+
+  localStorage.setItem('galagaScores', JSON.stringify(scores));
+  alert("SCORE SAVED!");
+}
+</script>
+
+</body>
+</html>
